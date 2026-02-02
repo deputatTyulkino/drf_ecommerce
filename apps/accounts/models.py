@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser
-from common.models import IsDeletedModel
+from apps.common.models import IsDeletedModel
 from .managers import CustomUserManager
 
 # Create your models here.

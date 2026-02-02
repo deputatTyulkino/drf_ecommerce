@@ -20,10 +20,10 @@ class Category(BaseModel):
 
 class Product(IsDeletedModel):
     seller = models.ForeignKey(
-        Seller, ob_delete=models.SET_NULL, null=True, related_name="products, "
+        Seller, on_delete=models.SET_NULL, null=True, related_name="products"
     )
     name = models.CharField(max_length=100)
-    slug = AutoSlugField(populate_from="name", always_update=True)
+    slug = AutoSlugField(populate_from="name", always_update=True, db_index=True)
     desc = models.TextField()
     price_old = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     price_current = models.DecimalField(max_digits=10, decimal_places=2)
