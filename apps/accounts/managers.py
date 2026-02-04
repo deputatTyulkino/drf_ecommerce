@@ -1,5 +1,6 @@
 from django.contrib.auth.base_user import BaseUserManager
 from django.core.validators import validate_email
+from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
 
@@ -9,6 +10,12 @@ class CustomUserManager(BaseUserManager):
             validate_email(email)
         except ValidationError:
             raise ValueError("You must provide a valid email address")
+
+    def password_validator(self, password):
+        try:
+            validate_password(password)
+        except ValidationError:
+            raise ValidationError("You must provide a valid password")
 
     def validate_user(self, first_name, last_name, email, password):
         if not first_name:
@@ -23,8 +30,10 @@ class CustomUserManager(BaseUserManager):
         else:
             raise ValueError("Base User Account: An email address is required")
 
-        if not password:
-            raise ValueError("User must have a password")
+        if password:
+            self.password_validator(password)
+        else:
+            raise ValueError("Base User Account: A password is required")
 
     def create_user(self, first_name, last_name, email, password, **extra_fields):
         self.validate_user(
