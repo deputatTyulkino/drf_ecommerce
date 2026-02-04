@@ -1,9 +1,9 @@
 from autoslug import AutoSlugField
 from django.db import models
-
-from apps.accounts.models import User
+from django.contrib.auth import get_user_model
 from apps.common.models import BaseModel
 
+User = get_user_model()
 
 # Create your models here.
 class Seller(BaseModel):
