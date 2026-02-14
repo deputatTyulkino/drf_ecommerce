@@ -28,4 +28,5 @@ urlpatterns = [
         name="swagger-ui",
     ),
     path("auth/", include("apps.accounts.urls")),
+    path('profile/', include('apps.profiles.urls'))
 ]
