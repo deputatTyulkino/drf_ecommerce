@@ -5,13 +5,15 @@ from django.core.exceptions import ValidationError
 
 
 class CustomUserManager(BaseUserManager):
-    def email_validator(self, email):
+    @staticmethod
+    def email_validator(email):
         try:
             validate_email(email)
         except ValidationError:
             raise ValueError("You must provide a valid email address")
 
-    def password_validator(self, password):
+    @staticmethod
+    def password_validator(password):
         try:
             validate_password(password)
         except ValidationError:
@@ -46,9 +48,10 @@ class CustomUserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-    def validate_superuser(self, **extra_fields):
+    @staticmethod
+    def validate_superuser(**extra_fields):
         extra_fields.setdefault("is_staff", True)
-        if extra_fields.get("is_staff") is not True:
+        if not extra_fields.get("is_staff"):
             raise ValueError("Superusers must have is_staff=True")
         return extra_fields
 
