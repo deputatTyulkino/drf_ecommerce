@@ -1,20 +1,21 @@
+from django.contrib.auth.password_validation import validate_password
+from rest_framework.generics import CreateAPIView
 from rest_framework.response import Response
-from rest_framework.viewsets import GenericViewSet
 from rest_framework_simplejwt.views import TokenObtainPairView
 from apps.accounts.serializers import CreateUserSerializer
 from apps.accounts.serializers import MyTokenObtainPairSerializer
 
 
 # Create your views here.
-class RegisterViewSet(GenericViewSet):
+class RegisterViewSet(CreateAPIView):
     serializer_class = CreateUserSerializer
 
-    def create(self, request):
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "success"}, status=201)
-        return Response(serializer.errors, status=400)
+    def validate_password(self, value):
+        validate_password(value)
+        return value
+
+    def post(self, request, *args, **kwargs):
+        super().create(request, *args, **kwargs)
 
 
 class MyTokenObtainPairView(TokenObtainPairView):

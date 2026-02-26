@@ -6,15 +6,15 @@ from apps.profiles.views import (
     ShippingAddressViewID,
 )
 
-
 urlpatterns = [
     path(
         "",
-        ProfileView.as_view({"get": "retrieve", "put": "update", "delete": "destroy"}),
+        ProfileView.as_view(),
     ),
     path(
         "shipping_addresses/",
-        ShippingAddressesView.as_view({"get": "list", "post": "create"}),
+        ShippingAddressesView.as_view(),
     ),
-    path("shipping_addresses/detail/<str:id>/", ShippingAddressViewID.as_view()),
+    path("shipping_addresses/detail/<str:id>/",
+         ShippingAddressViewID.as_view()),
 ]

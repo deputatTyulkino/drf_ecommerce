@@ -3,6 +3,7 @@ from django.db import models
 
 from apps.common.models import BaseModel, IsDeletedModel
 from apps.sellers.models import Seller
+from apps.shop.managers import ProductManager
 
 
 # Create your models here.
@@ -32,6 +33,8 @@ class Product(IsDeletedModel):
     )
 
     is_stock = models.IntegerField(default=5)
+
+    objects = ProductManager()
 
     image1 = models.ImageField(upload_to="product_images/")
     image2 = models.ImageField(upload_to="product_images/", blank=True)

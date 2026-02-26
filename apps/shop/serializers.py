@@ -1,38 +1,43 @@
 from rest_framework import serializers
 
-
-class CategorySerializer(serializers.Serializer):
-    name = serializers.CharField()
-    slug = serializers.SlugField(read_only=True)
-    image = serializers.ImageField()
+from apps.sellers.models import Seller
+from apps.shop.models import Category, Product
 
 
-class SellerShopSerializer(serializers.Serializer):
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = '__all__'
+        read_only_fields = ('slug',)
+
+
+class SellerShopSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source="business_name")
-    slug = serializers.SlugField()
     avatar = serializers.CharField(source="user.avatar")
 
-
-class ProductSerializer(serializers.Serializer):
-    seller = SellerShopSerializer()
-    name = serializers.CharField()
-    slug = serializers.SlugField()
-    desc = serializers.CharField()
-    price_old = serializers.DecimalField(max_digits=10, decimal_places=2)
-    price_current = serializers.DecimalField(max_digits=10, decimal_places=2)
-    category = CategorySerializer()
-    in_stock = serializers.IntegerField()
-    image1 = serializers.ImageField()
-    image2 = serializers.ImageField(required=False)
-    image3 = serializers.ImageField(required=False)
+    class Meta:
+        model = Seller
+        fields = ('name', 'slug', 'avatar')
 
 
-class CreateProductSerializer(serializers.Serializer):
-    name = serializers.CharField(max_length=100)
-    desc = serializers.CharField()
-    price_current = serializers.DecimalField(max_digits=10, decimal_places=2)
-    category_slug = serializers.SlugField()
-    in_stock = serializers.IntegerField()
-    image1 = serializers.ImageField()
-    image2 = serializers.ImageField(required=False)
-    image3 = serializers.ImageField(required=False)
+class ProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = '__all__'
+
+
+class CreateProductSerializer(serializers.ModelSerializer):
+    category_slug = serializers.SlugField(source="category.slug")
+
+    class Meta:
+        model = Product
+        fields = (
+            'name',
+            'desc',
+            'price_current',
+            'category_slug',
+            'is_stock',
+            'image1',
+            'image2',
+            'image3'
+        )
