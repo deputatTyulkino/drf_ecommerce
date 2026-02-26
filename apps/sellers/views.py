@@ -98,10 +98,9 @@ class SellerProductView(UpdateModelMixin, DestroyModelMixin, GenericAPIView):
         return product
 
     @extend_schema(
-        summary="Обновление продукта продавца",
-        description='Этот эндпоинт позволяет продавцу обновит свой продукт.',
-        tags=tags,
-        responses=ProductSerializer
+        summary="Seller Products Update",
+        description='This endpoint updates a seller product.',
+        tags=tags
     )
     def put(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
