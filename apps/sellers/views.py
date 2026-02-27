@@ -5,6 +5,7 @@ from rest_framework.generics import GenericAPIView, CreateAPIView, ListCreateAPI
 from rest_framework.mixins import UpdateModelMixin, DestroyModelMixin
 from rest_framework.response import Response
 
+from apps.common.permissions import IsSeller
 from apps.profiles.models import Order, OrderItem
 from apps.sellers.models import Seller
 from apps.sellers.serializers import SellerSerializer
@@ -36,6 +37,7 @@ class SellersView(CreateAPIView):
 
 class SellerProductsView(ListCreateAPIView):
     serializer_class = ProductSerializer
+    permission_classes = [IsSeller]
 
     def get_seller(self):
         seller = Seller.objects.get_or_none(user=self.request.user, is_approved=True)
@@ -63,7 +65,7 @@ class SellerProductsView(ListCreateAPIView):
         tags=tags,
     )
     def get(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
+        return super().get(request, *args, **kwargs)
 
     @extend_schema(
         summary="Create a product",
@@ -88,6 +90,7 @@ class SellerProductsView(ListCreateAPIView):
 
 class SellerProductView(UpdateModelMixin, DestroyModelMixin, GenericAPIView):
     serializer_class = CreateProductSerializer
+    permission_classes = [IsSeller]
 
     def get_object(self):
         product = Product.objects.get_or_none(slug=self.kwargs["slug"])
@@ -96,6 +99,7 @@ class SellerProductView(UpdateModelMixin, DestroyModelMixin, GenericAPIView):
             return PermissionDenied(detail={"message": "Access is denied"})
         if not product:
             return NotFound(detail={"message": "Product does not exist!"})
+        self.check_object_permissions(self.request, product)
         return product
 
     @extend_schema(
@@ -112,6 +116,7 @@ class SellerProductView(UpdateModelMixin, DestroyModelMixin, GenericAPIView):
 
 class SellerOrdersView(ListAPIView):
     serializer_class = OrderSerializer
+    permission_classes = [IsSeller]
 
     def get_queryset(self):
         seller = self.request.user.seller
@@ -134,6 +139,7 @@ class SellerOrdersView(ListAPIView):
 
 class SellerOrderItemsView(ListAPIView):
     serializer_class = CheckItemOrderSerializer
+    permission_classes = [IsSeller]
 
     def get_order(self):
         order = Order.objects.get_or_none(tx_ref=self.kwargs['tx_ref'])

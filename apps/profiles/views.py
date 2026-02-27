@@ -3,6 +3,7 @@ from rest_framework.exceptions import NotFound
 from rest_framework.generics import RetrieveUpdateDestroyAPIView, ListCreateAPIView, ListAPIView
 from rest_framework.response import Response
 
+from apps.common.permissions import IsOwner
 from apps.profiles.models import ShippingAddress, Order, OrderItem
 from apps.profiles.serializers import ProfileSerializer, ShippingAddressSerializer
 from apps.shop.serializers import OrderSerializer, CheckItemOrderSerializer
@@ -13,9 +14,12 @@ tags = ["Profiles"]
 # Create your views here.
 class ProfileView(RetrieveUpdateDestroyAPIView):
     serializer_class = ProfileSerializer
+    permission_classes = [IsOwner]
 
     def get_object(self):
-        return self.request.user
+        user = self.request.user
+        self.check_object_permissions(self.request, user)
+        return user
 
     @extend_schema(
         summary="Retrieve Profile",
@@ -23,7 +27,7 @@ class ProfileView(RetrieveUpdateDestroyAPIView):
         tags=tags,
     )
     def get(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
+        return super().get(request, *args, **kwargs)
 
     @extend_schema(
         summary="Update Profile",
@@ -32,7 +36,7 @@ class ProfileView(RetrieveUpdateDestroyAPIView):
         request={"multipart/form-data": serializer_class},
     )
     def put(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
+        return super().put(request, *args, **kwargs)
 
     @extend_schema(
         summary="Deactivate account",
@@ -48,6 +52,7 @@ class ProfileView(RetrieveUpdateDestroyAPIView):
 
 class ShippingAddressesView(ListCreateAPIView):
     serializer_class = ShippingAddressSerializer
+    permission_classes = [IsOwner]
 
     def get_queryset(self):
         return ShippingAddress.objects.filter(user=self.request.user)
@@ -58,7 +63,7 @@ class ShippingAddressesView(ListCreateAPIView):
         tags=tags,
     )
     def get(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
+        return super().get(request, *args, **kwargs)
 
     @extend_schema(
         summary="Create Shipping Address",
@@ -77,15 +82,17 @@ class ShippingAddressesView(ListCreateAPIView):
 class ShippingAddressViewID(RetrieveUpdateDestroyAPIView):
     serializer_class = ShippingAddressSerializer
     lookup_field = 'id'
-
-    def get_queryset(self):
-        return ShippingAddress.objects.filter(user=self.request.user)
+    permission_classes = [IsOwner]
 
     def get_object(self):
-        queryset = self.get_queryset()
-        shipping_address = queryset.objects.get_or_none(id=self.kwargs["id"])
+        shipping_address = (
+            ShippingAddress.objects
+            .filter(user=self.request.user)
+            .get_or_none(id=self.kwargs["id"])
+        )
         if shipping_address is None:
             raise NotFound(detail={"message": "Shipping Address does not exist!"})
+        self.check_object_permissions(self.request, shipping_address)
         return shipping_address
 
     @extend_schema(
@@ -94,7 +101,7 @@ class ShippingAddressViewID(RetrieveUpdateDestroyAPIView):
         tags=tags,
     )
     def get(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
+        return super().get(request, *args, **kwargs)
 
     @extend_schema(
         summary="Update Shipping Address ID",
@@ -102,7 +109,7 @@ class ShippingAddressViewID(RetrieveUpdateDestroyAPIView):
         tags=tags,
     )
     def put(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
+        return super().put(request, *args, **kwargs)
 
     @extend_schema(
         summary="Delete Shipping Address ID",
@@ -110,11 +117,12 @@ class ShippingAddressViewID(RetrieveUpdateDestroyAPIView):
         tags=tags,
     )
     def delete(self, request, *args, **kwargs):
-        super().destroy(request, *args, **kwargs)
+        super().delete(request, *args, **kwargs)
 
 
 class OrdersView(ListAPIView):
     serializer_class = OrderSerializer
+    permission_classes = [IsOwner]
 
     def get_queryset(self):
         return (Order.objects
@@ -133,17 +141,15 @@ class OrdersView(ListAPIView):
         return super().get(request, *args, **kwargs)
 
 
-class OrderItems:
-    pass
-
-
 class OrderItemsView(ListAPIView):
     serializer_class = CheckItemOrderSerializer
+    permission_classes = [IsOwner]
 
     def get_order(self):
         order = Order.objects.get_or_none(tx_ref=self.kwargs['tx_ref'])
-        if not order or order.user != self.request.user:
+        if not order:
             return Response(data={"message": "Order does not exist!"}, status=404)
+        self.check_object_permissions(self.request, order)
         return order
 
     def get_queryset(self):
