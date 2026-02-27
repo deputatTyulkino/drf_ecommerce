@@ -1,10 +1,12 @@
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.exceptions import NotFound
 from rest_framework.generics import ListAPIView, ListCreateAPIView, RetrieveAPIView, CreateAPIView
 from rest_framework.response import Response
 
 from apps.profiles.models import OrderItem, ShippingAddress, Order
 from apps.sellers.models import Seller
+from apps.shop.filter_backends import ProductsFilterBackend
 from apps.shop.models import Category, Product
 from apps.shop.serializers import CategorySerializer, ProductSerializer, OrderItemSerializer, ToggleCartItemSerializer, \
     CheckoutSerializer, OrderSerializer
@@ -55,12 +57,27 @@ class ProductsByCategoryView(ListAPIView):
 class ProductsView(ListAPIView):
     serializer_class = ProductSerializer
     queryset = Product.select.all()
+    filter_backends = [ProductsFilterBackend]
 
     @extend_schema(
         operation_id="all_products",
         summary="Product Fetch",
         description='This endpoint returns all products.',
-        tags=tags
+        tags=tags,
+        parameters=[
+            OpenApiParameter(
+                name="max_price",
+                description="Filter products by MAX current price",
+                required=False,
+                type=OpenApiTypes.INT,
+            ),
+            OpenApiParameter(
+                name="min_price",
+                description="Filter products by MIN current price",
+                required=False,
+                type=OpenApiTypes.INT,
+            ),
+        ]
     )
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
