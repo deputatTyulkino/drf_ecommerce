@@ -1,6 +1,8 @@
 from django.db import models
 from apps.common.models import BaseModel
 from django.contrib.auth import get_user_model
+
+from apps.profiles.manages import OrderItemManager
 from apps.shop.models import Product
 from apps.common.utils import generate_unique_code
 
@@ -60,6 +62,16 @@ class Order(BaseModel):
     country = models.CharField(max_length=100, null=True)
     zipcode = models.CharField(max_length=6, null=True)
 
+    @property
+    def get_cart_subtotal(self):
+        orderitems = self.order_items.all()
+        total = sum([item.get_total for item in orderitems])
+        return total
+
+    @property
+    def get_cart_total(self):
+        return self.get_cart_subtotal
+
     def __str__(self):
         return f"{self.user.full_name}'s order"
 
@@ -74,12 +86,15 @@ class OrderItem(BaseModel):
     order = models.ForeignKey(
         Order,
         on_delete=models.CASCADE,
-        related_name="order_items",
+        related_name="orderitems",
         null=True,
         blank=True,
     )
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
+
+    objects = models.Manager()
+    select = OrderItemManager()
 
     @property
     def get_total(self):

@@ -1,12 +1,11 @@
-from uuid import UUID
-
 from drf_spectacular.utils import extend_schema
 from rest_framework.exceptions import NotFound
-from rest_framework.generics import RetrieveUpdateDestroyAPIView, ListCreateAPIView
+from rest_framework.generics import RetrieveUpdateDestroyAPIView, ListCreateAPIView, ListAPIView
 from rest_framework.response import Response
 
-from apps.profiles.models import ShippingAddress
+from apps.profiles.models import ShippingAddress, Order, OrderItem
 from apps.profiles.serializers import ProfileSerializer, ShippingAddressSerializer
+from apps.shop.serializers import OrderSerializer, CheckItemOrderSerializer
 
 tags = ["Profiles"]
 
@@ -112,3 +111,51 @@ class ShippingAddressViewID(RetrieveUpdateDestroyAPIView):
     )
     def delete(self, request, *args, **kwargs):
         super().destroy(request, *args, **kwargs)
+
+
+class OrdersView(ListAPIView):
+    serializer_class = OrderSerializer
+
+    def get_queryset(self):
+        return (Order.objects
+                .select_related('user')
+                .prefetch_related('orderitems', 'orderitems__product')
+                .order_by('-created_at')
+                )
+
+    @extend_schema(
+        operation_id="orders_view",
+        summary="Orders Fetch",
+        description='This endpoint returns all orders for a particular user.',
+        tags=tags
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+
+class OrderItems:
+    pass
+
+
+class OrderItemsView(ListAPIView):
+    serializer_class = CheckItemOrderSerializer
+
+    def get_order(self):
+        order = Order.objects.get_or_none(tx_ref=self.kwargs['tx_ref'])
+        if not order or order.user != self.request.user:
+            return Response(data={"message": "Order does not exist!"}, status=404)
+        return order
+
+    def get_queryset(self):
+        order = self.get_order()
+        return OrderItem.select.filter(order=order)
+
+    @extend_schema(
+        operation_id="order_items_view",
+        summary="Items Order Fetch",
+        description='This endpoint returns all items order for a particular user.',
+        tags=tags,
+
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)

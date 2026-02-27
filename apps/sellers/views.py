@@ -1,14 +1,15 @@
 # Create your views here.
 from drf_spectacular.utils import extend_schema
 from rest_framework.exceptions import NotFound, PermissionDenied
-from rest_framework.generics import GenericAPIView, CreateAPIView, ListCreateAPIView
+from rest_framework.generics import GenericAPIView, CreateAPIView, ListCreateAPIView, ListAPIView
 from rest_framework.mixins import UpdateModelMixin, DestroyModelMixin
 from rest_framework.response import Response
 
+from apps.profiles.models import Order, OrderItem
 from apps.sellers.models import Seller
 from apps.sellers.serializers import SellerSerializer
 from apps.shop.models import Category, Product
-from apps.shop.serializers import ProductSerializer, CreateProductSerializer
+from apps.shop.serializers import ProductSerializer, CreateProductSerializer, OrderSerializer, CheckItemOrderSerializer
 
 tags = ["Sellers"]
 
@@ -107,3 +108,49 @@ class SellerProductView(UpdateModelMixin, DestroyModelMixin, GenericAPIView):
 
     def delete(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
+
+
+class SellerOrdersView(ListAPIView):
+    serializer_class = OrderSerializer
+
+    def get_queryset(self):
+        seller = self.request.user.seller
+        orders = (Order.objects
+                  .filter(orderitems__product__seller=seller)
+                  .distinct()
+                  .order_by('-created_at')
+                  )
+        return orders
+
+    @extend_schema(
+        operation_id="seller_orders_view",
+        summary="Seller Orders Fetch",
+        description='This endpoint returns all orders for a particular seller.',
+        tags=tags
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+
+class SellerOrderItemsView(ListAPIView):
+    serializer_class = CheckItemOrderSerializer
+
+    def get_order(self):
+        order = Order.objects.get_or_none(tx_ref=self.kwargs['tx_ref'])
+        if not order:
+            return Response(data={"message": "Order does not exist!"}, status=404)
+        return order
+
+    def get_queryset(self):
+        seller = self.request.user.seller
+        order = self.get_order()
+        return OrderItem.objects.filter(order=order, seller=seller)
+
+    @extend_schema(
+        operation_id="seller_order_items_view",
+        summary="Seller Items Order Fetch",
+        description='This endpoint returns all items order for a particular seller.',
+        tags=tags,
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)

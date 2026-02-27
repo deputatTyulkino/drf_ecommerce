@@ -1,10 +1,13 @@
 from drf_spectacular.utils import extend_schema
 from rest_framework.exceptions import NotFound
-from rest_framework.generics import ListAPIView, ListCreateAPIView, RetrieveAPIView
+from rest_framework.generics import ListAPIView, ListCreateAPIView, RetrieveAPIView, CreateAPIView
+from rest_framework.response import Response
 
+from apps.profiles.models import OrderItem, ShippingAddress, Order
 from apps.sellers.models import Seller
 from apps.shop.models import Category, Product
-from apps.shop.serializers import CategorySerializer, ProductSerializer
+from apps.shop.serializers import CategorySerializer, ProductSerializer, OrderItemSerializer, ToggleCartItemSerializer, \
+    CheckoutSerializer, OrderSerializer
 
 tags = ["Shop"]
 
@@ -19,7 +22,7 @@ class CategoriesView(ListCreateAPIView):
         tags=tags,
     )
     def get(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
+        return super().get(request, *args, **kwargs)
 
     @extend_schema(
         summary="Category Creating",
@@ -27,7 +30,7 @@ class CategoriesView(ListCreateAPIView):
         tags=tags,
     )
     def post(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
+        return super().post(request, *args, **kwargs)
 
 
 class ProductsByCategoryView(ListAPIView):
@@ -46,12 +49,12 @@ class ProductsByCategoryView(ListAPIView):
         tags=tags
     )
     def get(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
+        return super().get(request, *args, **kwargs)
 
 
 class ProductsView(ListAPIView):
     serializer_class = ProductSerializer
-    queryset = Product.objects.all()
+    queryset = Product.select.all()
 
     @extend_schema(
         operation_id="all_products",
@@ -60,7 +63,7 @@ class ProductsView(ListAPIView):
         tags=tags
     )
     def get(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
+        return super().get(request, *args, **kwargs)
 
 
 class ProductsBySellerView(ListAPIView):
@@ -78,7 +81,7 @@ class ProductsBySellerView(ListAPIView):
         tags=tags
     )
     def get(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
+        return super().get(request, *args, **kwargs)
 
 
 class ProductView(RetrieveAPIView):
@@ -97,4 +100,115 @@ class ProductView(RetrieveAPIView):
         tags=tags
     )
     def get(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
+        return super().get(request, *args, **kwargs)
+
+
+class CartView(ListCreateAPIView):
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return ToggleCartItemSerializer
+        else:
+            return OrderItemSerializer
+
+    def get_queryset(self):
+        return OrderItem.select.filter(user=self.request.user, order=None)
+
+    def get_product(self):
+        product = Product.objects.get_or_none(slug=self.kwargs["slug"])
+        if not product:
+            return NotFound(detail={"message": "No Product with that slug"})
+        return product
+
+    @extend_schema(
+        summary="Cart Items Fetch",
+        description='This endpoint returns all items in a user cart.',
+        tags=tags,
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Toggle Item in cart",
+        description="""
+               This endpoint allows a user or guest to add/update/remove an item in cart.
+               If quantity is 0, the item is removed from cart
+           """,
+        tags=tags,
+        request=ToggleCartItemSerializer,
+    )
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        product = self.get_product()
+        orderitem, created = OrderItem.objects.update_or_create(
+            user=user,
+            order=None,
+            product=product,
+            defaults={'quantity': data['quantity']},
+        )
+        resp_message_substring = "Updated In"
+        status_code = 200
+        if created:
+            status_code = 201
+            resp_message_substring = "Added To"
+        if orderitem.quantity == 0:
+            resp_message_substring = "Removed From"
+            orderitem.delete()
+            data = None
+        if resp_message_substring != "Removed From":
+            serializer = self.serializer_class(orderitem)
+            data = serializer.data
+        return Response(
+            data={"message": f"Item {resp_message_substring} Cart", "item": data},
+            status=status_code
+        )
+
+
+class CheckoutView(CreateAPIView):
+    serializer_class = CheckoutSerializer
+
+    def get_shipping_address(self, id):
+        shipping = ShippingAddress.objects.get_or_none(id=id)
+        if not shipping:
+            return Response({"message": "No shipping address with that ID"}, status=404)
+        return shipping
+
+    def get_orderitems(self):
+        orderitems = OrderItem.objects.filter(user=self.request.user, order=None)
+        if not orderitems.exists():
+            return Response({"message": "No Items in Cart"}, status=404)
+        return orderitems
+
+    def create_order(self, obj):
+        fields_to_update = [
+            "full_name",
+            "email",
+            "phone",
+            "address",
+            "city",
+            "country",
+            "zipcode",
+        ]
+        data = {field: getattr(obj, field) for field in fields_to_update}
+        return Order.objects.create(user=self.request.user, **data)
+
+    @extend_schema(
+        summary="Checkout",
+        description='This endpoint allows a user to create an order through which payment can then be made through.',
+        tags=tags,
+        request=CheckoutSerializer,
+    )
+    def post(self, request, *args, **kwargs):
+        orderitems = self.get_orderitems()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        shipping = self.get_shipping_address(data.get('shipping_id'))
+        order = self.create_order(shipping)
+        orderitems.update(order=order)
+        serializer = OrderSerializer(order)
+        return Response(
+            data={"message": "Checkout Successful", "item": serializer.data}, status=200
+        )

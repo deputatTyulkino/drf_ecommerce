@@ -3,7 +3,7 @@ from django.urls import path
 from apps.profiles.views import (
     ProfileView,
     ShippingAddressesView,
-    ShippingAddressViewID,
+    ShippingAddressViewID, OrdersView, OrderItemsView,
 )
 
 urlpatterns = [
@@ -17,4 +17,6 @@ urlpatterns = [
     ),
     path("shipping_addresses/detail/<str:id>/",
          ShippingAddressViewID.as_view()),
+    path('orders/', OrdersView.as_view()),
+    path('orers/<str:tx_ref>/', OrderItemsView.as_view())
 ]
