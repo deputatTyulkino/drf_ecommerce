@@ -1,10 +1,15 @@
+from xxlimited_35 import Null
+
 from autoslug import AutoSlugField
+from django.contrib.auth import get_user_model
 from django.db import models
 
 from apps.common.models import BaseModel, IsDeletedModel
 from apps.profiles.manages import OrderItemManager
 from apps.sellers.models import Seller
 from apps.shop.managers import ProductManager
+
+User = get_user_model()
 
 
 # Create your models here.
@@ -44,3 +49,17 @@ class Product(IsDeletedModel):
 
     def __str__(self):
         return self.name
+
+
+class Review(IsDeletedModel):
+    RATING_CHOICES = ((1, 1), (2, 2), (3, 3), (4, 4), (5, 5))
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='product_reviews',
+        blank=True,
+    )
+    rating = models.IntegerField(choices=RATING_CHOICES, default=5)
+    text = models.TextField()

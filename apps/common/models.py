@@ -22,8 +22,8 @@ class IsDeletedModel(BaseModel):
 
     objects = IsDeletedManager()
 
-    class Meta(BaseModel.Meta):
-        pass
+    class Meta:
+        abstract = True
 
     def delete(self, *args, **kwargs):
         self.is_deleted = True

@@ -4,7 +4,7 @@ from rest_framework import serializers
 from apps.profiles.models import OrderItem, Order
 from apps.profiles.serializers import ShippingAddressSerializer
 from apps.sellers.models import Seller
-from apps.shop.models import Category, Product
+from apps.shop.models import Category, Product, Review
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -24,9 +24,14 @@ class SellerShopSerializer(serializers.ModelSerializer):
 
 
 class ProductSerializer(serializers.ModelSerializer):
+    rating = serializers.SerializerMethodField()
+
     class Meta:
         model = Product
-        fields = '__all__'
+        fields = "__all__"
+
+    def get_rating(self, obj):
+        return sum([review for review in obj.product_reviews]) / len(obj.product_reviews)
 
 
 class CreateProductSerializer(serializers.ModelSerializer):
@@ -109,3 +114,15 @@ class CheckItemOrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
         fields = ('product', 'quantity', 'total')
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Review
+        fields = ('user', 'product', 'rating', 'created_at', 'text')
+
+
+class CreateReviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Review
+        fields = ('rating', 'text')

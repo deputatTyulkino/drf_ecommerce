@@ -1,6 +1,5 @@
 from django.contrib.auth.password_validation import validate_password
 from rest_framework.generics import CreateAPIView
-from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from apps.accounts.serializers import CreateUserSerializer
 from apps.accounts.serializers import MyTokenObtainPairSerializer
@@ -15,7 +14,7 @@ class RegisterViewSet(CreateAPIView):
         return value
 
     def post(self, request, *args, **kwargs):
-        super().create(request, *args, **kwargs)
+        super().post(request, *args, **kwargs)
 
 
 class MyTokenObtainPairView(TokenObtainPairView):
